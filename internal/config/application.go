@@ -28,7 +28,14 @@ type parser interface {
 	parseConfigValues() error
 }
 
+type SBOMSections struct {
+	IncludeFiles    bool `yaml:"include-files" json:"include-files"`
+	IncludePackages bool `yaml:"include-packages" json:"include-packages"`
+}
+
 type Application struct {
+	// allow insertion of sbom-files and sbom-packages for image scans
+	IncludeSBOM SBOMSections `yaml:"sbom" json:"sbom" mapstructure:"sbom"`
 	ConfigPath          string                  `yaml:",omitempty" json:"configPath"`                                                         // the location where the application config was read from (either from -c or discovered while loading)
 	Output              string                  `yaml:"output" json:"output" mapstructure:"output"`                                           // -o, the Presenter hint string to use for report formatting
 	File                string                  `yaml:"file" json:"file" mapstructure:"file"`                                                 // --file, the file to write report output to
@@ -79,6 +86,7 @@ func LoadApplicationConfig(v *viper.Viper, cliOpts CliOnlyOptions) (*Application
 		return nil, fmt.Errorf("invalid application config: %w", err)
 	}
 
+	config.IncludeSBOM = SBOMSections{IncludeFiles: false, IncludePackages: false}
 	return config, nil
 }
 

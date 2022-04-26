@@ -133,6 +133,16 @@ func setRootFlags(flags *pflag.FlagSet) {
 		"generate CPEs for packages with no CPE data",
 	)
 
+	flags.BoolP(
+		"sbom-files", "", false,
+		"generate a report with SBOM files list",
+	)
+
+	flags.BoolP(
+		"sbom-packages", "", false,
+		"generate a report with SBOM packages ",
+	)
+
 	flags.StringP("template", "t", "", "specify the path to a Go template file ("+
 		"requires 'template' output to be selected)")
 
@@ -206,15 +216,24 @@ func bindRootConfigOptions(flags *pflag.FlagSet) error {
 	if err := viper.BindPFlag("platform", flags.Lookup("platform")); err != nil {
 		return err
 	}
+if err := viper.BindPFlag("sbom-files", flags.Lookup("sbom-files")); err != nil {
+		return err
+	}
 
 	if err := viper.BindPFlag("attestation.public-key", flags.Lookup("key")); err != nil {
 		return err
 	}
 
+	if err := viper.BindPFlag("sbom-packages", flags.Lookup("sbom-packages")); err != nil {
+		return err
+	}
+
+	// bom-packages
+
 	return nil
 }
 
-func rootExec(_ *cobra.Command, args []string) error {
+func rootExec(cmd *cobra.Command, args []string) error {
 	// we may not be provided an image if the user is piping in SBOM input
 	var userInput string
 	if len(args) > 0 {
@@ -232,6 +251,13 @@ func rootExec(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	if includeFiles, err := cmd.Flags().GetBool("sbom-files"); err == nil {
+		appConfig.IncludeSBOM.IncludeFiles = includeFiles
+	}
+
+	if includePkgs, err := cmd.Flags().GetBool("sbom-packages"); err == nil {
+		appConfig.IncludeSBOM.IncludePackages = includePkgs
+	}
 	return eventLoop(
 		startWorker(userInput, appConfig.FailOnSeverity),
 		setupSignals(),
@@ -304,6 +330,7 @@ func startWorker(userInput string, failOnSeverity *vulnerability.Severity) <-cha
 
 		go func() {
 			defer wg.Done()
+
 			log.Debugf("gathering packages")
 			packages, context, err = pkg.Provide(userInput, getProviderConfig())
 			if err != nil {

@@ -1,7 +1,10 @@
 package pkg
 
 import (
+	"github.com/anchore/stereoscope/pkg/file"
 	"github.com/anchore/syft/syft"
+	"github.com/anchore/syft/syft/pkg"
+
 	"github.com/anchore/syft/syft/source"
 )
 
@@ -27,7 +30,9 @@ func syftProvider(userInput string, config ProviderConfig) ([]Package, Context, 
 	}
 
 	return FromCatalog(catalog, config), Context{
-		Source: &src.Metadata,
-		Distro: theDistro,
+		Source:         &src.Metadata,
+		Distro:         theDistro,
+		Files:          src.Image.SquashedTree().AllFiles(file.AllTypes...),
+		PackageCatalog: catalog.Sorted(pkg.AllPkgs...),
 	}, nil
 }

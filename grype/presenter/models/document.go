@@ -7,6 +7,7 @@ import (
 	"github.com/anchore/grype/grype/pkg"
 	"github.com/anchore/grype/grype/vulnerability"
 	"github.com/anchore/grype/internal"
+	"github.com/anchore/grype/internal/config"
 	"github.com/anchore/grype/internal/version"
 )
 
@@ -17,6 +18,8 @@ type Document struct {
 	Source         *source        `json:"source"`
 	Distro         distribution   `json:"distro"`
 	Descriptor     descriptor     `json:"descriptor"`
+	Files          interface{}    `json:"files,omitempty"`
+	PackageCatalog interface{}    `json:"packages,omitempty"`
 }
 
 // NewDocument creates and populates a new Document struct, representing the populated JSON document.
@@ -64,8 +67,7 @@ func NewDocument(packages []pkg.Package, context pkg.Context, matches match.Matc
 		}
 		ignoredMatchModels = append(ignoredMatchModels, ignoredMatch)
 	}
-
-	return Document{
+	document := Document{
 		Matches:        findings,
 		IgnoredMatches: ignoredMatchModels,
 		Source:         src,
@@ -76,5 +78,17 @@ func NewDocument(packages []pkg.Package, context pkg.Context, matches match.Matc
 			Configuration:         appConfig,
 			VulnerabilityDBStatus: dbStatus,
 		},
-	}, nil
+	}
+	if appcfg, ok := appConfig.(*config.Application); ok {
+		if appcfg.IncludeSBOM.IncludeFiles && len(context.Files) > 0 {
+			document.Files = context.Files
+		}
+
+		if appcfg.IncludeSBOM.IncludePackages && context.PackageCatalog != nil {
+			document.PackageCatalog = context.PackageCatalog
+
+		}
+	}
+
+	return document, nil
 }
